@@ -3,6 +3,7 @@ package com.example.rate_limiter.config;
 
 import com.example.rate_limiter.limiter.FixedWindowLimiter;
 import com.example.rate_limiter.limiter.SlidingWindowLimiter;
+import com.example.rate_limiter.limiter.TokenBucketLimiter;
 import com.example.rate_limiter.limiter.RateLimiter;
 
 import java.time.Clock;
@@ -17,13 +18,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class RateLimiterConfig {
 
-    // Shared clock used by Fixed Window.
+    // Fixed Window uses the Java application's clock.
     @Bean
     public Clock rateLimitClock() {
         return Clock.systemUTC();
     }
 
-    // Selected when FIXED_WINDOW is configured.
+    // Algorithm 1: Fixed Window.
     @Bean
     @ConditionalOnProperty(
         name = "rate-limiter.algorithm",
@@ -41,7 +42,7 @@ public class RateLimiterConfig {
         );
     }
 
-    // Selected when SLIDING_WINDOW is configured.
+    // Algorithm 2: Sliding Window Log.
     @Bean
     @ConditionalOnProperty(
         name = "rate-limiter.algorithm",
@@ -52,6 +53,22 @@ public class RateLimiterConfig {
             RateLimitProperties properties) {
 
         return new SlidingWindowLimiter(
+            redis,
+            properties
+        );
+    }
+
+    // Algorithm 3: Token Bucket.
+    @Bean
+    @ConditionalOnProperty(
+        name = "rate-limiter.algorithm",
+        havingValue = "TOKEN_BUCKET"
+    )
+    public RateLimiter tokenBucketLimiter(
+            StringRedisTemplate redis,
+            RateLimitProperties properties) {
+
+        return new TokenBucketLimiter(
             redis,
             properties
         );
